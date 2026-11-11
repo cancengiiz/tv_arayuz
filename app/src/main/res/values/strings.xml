@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Seans</string>
+    <string name="a11y_label">Seans: Home tuşuyla aç</string>
+    <string name="a11y_desc">Home tuşuna basıldığında Google TV ana ekranı yerine Seans\'ı açar. Ekrandaki içeriği okumaz; yalnızca Google TV ana ekranının açıldığını algılar.</string>
+</resources>
