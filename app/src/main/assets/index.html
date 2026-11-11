@@ -106,8 +106,12 @@ body.idle #hint{opacity:0}
 #grid .it{width:6.2rem}
 #grid .lb{bottom:auto;top:7.6rem;font-size:1.15rem;opacity:.6;transform:translate(-50%,0);max-width:9rem;overflow:hidden;text-overflow:ellipsis}
 #grid .it.focus .lb{opacity:1}
-.pin{position:absolute;top:.6rem;right:.6rem;width:.6rem;height:.6rem;border-radius:50%;background:var(--w-80)}
+.pin{position:absolute;top:-.6rem;right:-.6rem;width:2rem;height:2rem;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 .4rem 1rem rgba(0,0,0,.3)}
+.pin svg{width:1.2rem;height:1.2rem;stroke:#17171a;stroke-width:2.6;fill:none;stroke-linecap:round;stroke-linejoin:round}
 .it.focus .pin{background:#17171a}
+.it.focus .pin svg{stroke:#fff}
+body.picking #grid .it:not(.on) .tl{opacity:.55}
+body.picking #grid .it.focus .tl{opacity:1}
 
 #settings{right:4rem;top:4rem;bottom:4rem;width:46rem;border-radius:3.2rem}
 #settings .in{padding:4.4rem 3.6rem}
@@ -138,13 +142,13 @@ body.idle #hint{opacity:0}
 
   <div id="dlabel"></div>
   <div id="caption"></div>
-  <div id="hint"><span><b>← →</b>gez</span><span><b>Enter</b>aç</span><span><b>M</b>menü</span><span><b>Esc</b>geri</span></div>
+  <div id="hint"><span><b>← →</b>gez</span><span><b>Enter</b>aç</span><span><b>M</b>uzun basma</span><span><b>Esc</b>geri</span></div>
 
   <div id="scrim"></div>
   <section class="glass panel" id="all" aria-label="Uygulamalar">
     <div class="in">
       <h2>Uygulamalar</h2>
-      <p class="sub">Menü tuşu uygulamayı alt şeride ekler ya da çıkarır</p>
+      <p class="sub"></p>
       <div id="grid"></div>
     </div>
   </section>
@@ -347,25 +351,39 @@ function tileHTML(a){
 }
 function dockItems(){ return S.dock.map(function(p){ return byPkg[p]; }).concat([{pkg:"#all", label:"Tüm uygulamalar", svg:I_ALL},{pkg:"#set", label:"Ayarlar", svg:I_SET}]); }
 function renderDock(){
-  var html = "";
+  var html = ""; focus.dock = Math.min(focus.dock, dockItems().length - 1);
   dockItems().forEach(function(a, i){ if(a.pkg === "#all") html += '<div class="div"></div>'; html += '<div class="it" data-i="'+i+'">'+tileHTML(a)+'</div>'; });
   document.getElementById("dockIn").innerHTML = html; paint(); alignGlass();
 }
+var CHECK = '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7"/></svg>';
 function renderGrid(){
+  document.querySelector("#all h2").textContent = picking ? "Alt şeridi seç" : "Uygulamalar";
+  document.querySelector("#all .sub").textContent = picking
+    ? "OK ile alt şeride ekle ya da çıkar. Bitirince Geri tuşuna bas."
+    : "OK'ye uzun basarak uygulamayı alt şeride ekleyebilir ya da çıkarabilirsin";
+  document.body.classList.toggle("picking", picking);
   document.getElementById("grid").innerHTML = apps.map(function(a, i){
-    return '<div class="it" data-i="'+i+'">'+tileHTML(a).replace('<div class="tl">','<div class="tl" style="position:relative">'+(S.dock.indexOf(a.pkg)>-1?'<i class="pin"></i>':''))+'</div>';
+    var on = S.dock.indexOf(a.pkg) > -1;
+    return '<div class="it'+(on?' on':'')+'" data-i="'+i+'">'+tileHTML(a).replace('<div class="tl">','<div class="tl" style="position:relative">'+(on?'<i class="pin">'+CHECK+'</i>':''))+'</div>';
   }).join(""); paint();
 }
+function togglePin(i){
+  var a = apps[i], j = S.dock.indexOf(a.pkg);
+  if(j > -1){ S.dock.splice(j,1); toast(a.label + " alt şeritten çıkarıldı"); } else { S.dock.push(a.pkg); toast(a.label + " alt şeride eklendi"); }
+  save(); renderGrid();
+}
 var ROWS = [
+  {grp:"Alt şerit"},
+  {act:"pick", label:"Alt şeride uygulama seç"},
+  {act:"edit", label:"Alt şeridin sırasını değiştir"},
+  {key:"icons", label:"Simgeler", opts:[["mono","Sade"],["app","Uygulama simgesi"]]},
   {grp:"Arka plan"},
   {key:"interval", label:"Fotoğraf değişimi", opts:[[30,"30 sn"],[60,"1 dk"],[300,"5 dk"],[900,"15 dk"]]},
   {key:"dim", label:"Karartma", opts:[[0,"Kapalı"],[.15,"Hafif"],[.3,"Orta"],[.45,"Güçlü"]]},
   {act:"photos", label:"Kendi fotoğraflarını ekle"},
   {grp:"Ekran koruyucu"},
   {key:"idle", label:"Menüyü gizle", opts:[[20,"20 sn"],[45,"45 sn"],[120,"2 dk"],[0,"Hiçbir zaman"]]},
-  {grp:"Uygulamalar"},
-  {key:"icons", label:"Simgeler", opts:[["mono","Sade"],["app","Uygulama simgesi"]]},
-  {act:"edit", label:"Alt şeridi düzenle"},
+  {grp:"Sistem"},
   {act:"system", label:"Sistem ayarları"}
 ];
 /* Cihazda dosya seçici yok: fotoğraf satırı yerine Home tuşu ayarı gösterilir */
@@ -383,7 +401,7 @@ function renderRows(){
 }
 
 /* ---------- Odak ve kumanda ---------- */
-var mode = "dock", focus = {dock:0, all:0, set:0}, picked = false;
+var mode = "dock", focus = {dock:0, all:0, set:0}, picked = false, picking = false;
 function paint(){
   var q = (mode === "all") ? "#grid .it" : "#dockIn .it", k = (mode === "all") ? focus.all : focus.dock;
   document.querySelectorAll(".it.focus,.it.picked").forEach(function(n){ n.classList.remove("focus","picked"); });
@@ -435,11 +453,9 @@ function key(k){
   if(mode === "all"){
     var c = 8, i = focus.all;
     if(k === "left") i--; else if(k === "right") i++; else if(k === "up") i -= c; else if(k === "down") i += c;
-    else if(k === "ok") return launch(apps[focus.all]);
-    else if(k === "back") return setMode("dock");
-    else if(k === "menu"){ var pk = apps[focus.all].pkg, j = S.dock.indexOf(pk);
-      if(j > -1){ S.dock.splice(j,1); toast(apps[focus.all].label + " alt şeritten çıkarıldı"); } else { S.dock.push(pk); toast(apps[focus.all].label + " alt şeride eklendi"); }
-      save(); return renderGrid(); }
+    else if(k === "ok") return picking ? togglePin(focus.all) : launch(apps[focus.all]);
+    else if(k === "back"){ var was = picking; picking = false; document.body.classList.remove("picking"); setMode("dock"); if(was) toast("Alt şerit güncellendi"); return; }
+    else if(k === "menu") return togglePin(focus.all);
     if(i >= 0 && i < apps.length){ focus.all = i; paint(); }
     return;
   }
@@ -454,6 +470,7 @@ function key(k){
     }
     else if(k === "ok"){
       if(r.act === "photos") document.getElementById("files").click();
+      else if(r.act === "pick"){ picking = true; focus.all = 0; return setMode("all"); }
       else if(r.act === "edit"){ focus.dock = 0; picked = false; return setMode("edit"); }
       else if(r.act === "home"){ try{ NATIVE.openAccessibilitySettings(); }catch(e){} }
       else if(r.act === "system"){ if(NATIVE){ try{ NATIVE.openSystemSettings(); }catch(e){} } else toast("Sistem ayarları açılıyor"); }

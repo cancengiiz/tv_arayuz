@@ -102,19 +102,38 @@ public class MainActivity extends Activity {
 
     /**
      * Geri, Menü ve OK tuşlarını doğrudan sayfaya iletir.
+     * OK'ye uzun basmak (yaklaşık yarım saniye) "menü" sayılır; çoğu Google TV kumandasında Menü tuşu yoktur.
      * Yön tuşları WebView tarafından zaten ArrowLeft/Right/Up/Down olarak gönderilir.
      */
+    private boolean okLongFired = false;
+
     @Override
     public boolean dispatchKeyEvent(KeyEvent e) {
         int code = e.getKeyCode();
+        int action = e.getAction();
+
+        if (code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER
+                || code == KeyEvent.KEYCODE_NUMPAD_ENTER) {
+            if (action == KeyEvent.ACTION_DOWN) {
+                if (e.getRepeatCount() == 0) {
+                    okLongFired = false;
+                } else if (!okLongFired && (e.isLongPress() || e.getRepeatCount() >= 2)) {
+                    okLongFired = true;
+                    js("window.seansKey && window.seansKey('menu')");
+                }
+            } else if (action == KeyEvent.ACTION_UP) {
+                if (!okLongFired) js("window.seansKey && window.seansKey('ok')");
+                okLongFired = false;
+            }
+            return true;
+        }
+
         String key = null;
         if (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE) key = "back";
         else if (code == KeyEvent.KEYCODE_MENU) key = "menu";
-        else if (code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER
-                || code == KeyEvent.KEYCODE_NUMPAD_ENTER) key = "ok";
 
         if (key != null) {
-            if (e.getAction() == KeyEvent.ACTION_DOWN && e.getRepeatCount() == 0) {
+            if (action == KeyEvent.ACTION_DOWN && e.getRepeatCount() == 0) {
                 js("window.seansKey && window.seansKey('" + key + "')");
             }
             return true; // Ana ekran asla kapanmaz
