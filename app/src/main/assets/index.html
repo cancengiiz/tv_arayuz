@@ -53,6 +53,21 @@ body{width:100vw;height:100vh;overflow:hidden;background:#000;color:var(--w);fon
 #meta svg{width:1.9rem;height:1.9rem;margin-right:.7rem;vertical-align:-.35rem;stroke:var(--w-80);fill:none;stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round}
 body.idle #time{transform:translateY(8rem)}
 
+/* ---------- Dikey / kare fotoğraf: bulanık zemin + çerçeveli fotoğraf ---------- */
+#card{position:absolute;right:8rem;top:6rem;height:46rem;width:34.5rem;border-radius:2.2rem;overflow:hidden;opacity:0;transform:scale(.97);
+  transition:opacity 1.8s var(--ease), transform 1.8s var(--ease), width 1.2s var(--ease);
+  box-shadow:0 3rem 7rem rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.16)}
+#card .cv{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0;transition:opacity 1.8s ease}
+#card .cv.on{opacity:1}
+#card::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 0 0 1px rgba(255,255,255,.16);pointer-events:none}
+body.portrait #card{opacity:1;transform:none}
+body.portrait #time{left:8rem;right:auto;text-align:left;top:15rem}
+body.portrait #meta{justify-content:flex-start}
+#veil{position:absolute;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity 1.8s}
+body.portrait #veil{opacity:.22}
+body.portrait.idle #time{transform:translateY(6rem)}
+body.portrait #caption{left:auto;right:8rem;width:34.5rem}
+
 /* ---------- Dock ---------- */
 #dock{left:50%;bottom:5.5rem;transform:translateX(-50%);border-radius:2.8rem;transition:opacity .9s var(--ease), transform .9s var(--ease)}
 #dock .lb{display:none}
@@ -114,8 +129,10 @@ body.picking #grid .it:not(.on) .tl{opacity:.55}
 body.picking #grid .it.focus .tl{opacity:1}
 
 #settings{right:4rem;top:4rem;bottom:4rem;width:46rem;border-radius:3.2rem}
-#settings .in{padding:4.4rem 3.6rem}
-#rows{margin-top:3rem}
+#settings .in{padding:4.4rem 3.6rem 2.4rem;height:100%;display:flex;flex-direction:column}
+#rowsWrap{position:relative;flex:1;min-height:0;margin-top:2.6rem;overflow:hidden;padding:.6rem .4rem;margin-left:-.4rem;margin-right:-.4rem}
+#rows{transition:transform .35s var(--ease)}
+#rowsWrap{-webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 1.4rem, #000 calc(100% - 1.4rem), transparent 100%);mask-image:linear-gradient(to bottom, transparent 0, #000 1.4rem, #000 calc(100% - 1.4rem), transparent 100%)}
 .grp{margin:2.2rem 0 .8rem 1.6rem;font-size:1.15rem;letter-spacing:.06em;color:var(--w-35)}
 .grp:first-child{margin-top:0}
 .row{display:flex;justify-content:space-between;align-items:center;height:4.6rem;padding:0 1.6rem;border-radius:1.4rem;font-size:1.45rem;letter-spacing:.02em;transition:background-color .2s, color .2s, transform .35s var(--spring)}
@@ -127,11 +144,14 @@ body.picking #grid .it.focus .tl{opacity:1}
 
 @media (prefers-reduced-motion:reduce){*{transition-duration:.01s!important;animation:none!important}}
 </style>
+<script src="photos/photos.js"></script>
 </head>
 <body>
 <div id="stage">
   <div class="ph" id="p0"></div><div class="ph" id="p1"></div>
+  <div id="veil"></div>
   <div id="shade"></div>
+  <div id="card"><div class="cv"></div><div class="cv"></div></div>
 
   <section id="time">
     <div id="clock">00:00</div>
@@ -156,7 +176,7 @@ body.picking #grid .it.focus .tl{opacity:1}
     <div class="in">
       <h2>Ana ekran</h2>
       <p class="sub">Değiştirmek için ← →</p>
-      <div id="rows"></div>
+      <div id="rowsWrap"><div id="rows"></div></div>
     </div>
   </section>
 
@@ -268,7 +288,10 @@ var SCENES = [
 ];
 
 var userPhotos = [];
-function scenes(){ return userPhotos.length ? userPhotos : SCENES; }
+/* Paketlenmiş fotoğraflar (photos/photos.js) — açılışta karıştırılır */
+var BUNDLED = (window.SEANS_PHOTOS || []).map(function(p){ return {url:p.src, w:p.w, h:p.h, caption:p.caption || ""}; });
+for(var bi = BUNDLED.length - 1; bi > 0; bi--){ var bj = Math.floor(Math.random()*(bi+1)), bt = BUNDLED[bi]; BUNDLED[bi] = BUNDLED[bj]; BUNDLED[bj] = bt; }
+function scenes(){ return userPhotos.length ? userPhotos : (BUNDLED.length ? BUNDLED : SCENES); }
 function srcOf(sc){ return sc.url || ("data:image/svg+xml;charset=utf-8," + encodeURIComponent(sc.svg)); }
 
 /* Bulanık kopya: bir kez, küçük çözünürlükte üretilir ve önbelleğe alınır */
@@ -278,6 +301,7 @@ function makeBlur(sc, cb){
   img.onload = function(){
     var W = 240, H = 135, c = document.createElement("canvas"); c.width = W; c.height = H;
     var x = c.getContext("2d"), iw = img.naturalWidth || 1920, ih = img.naturalHeight || 1080;
+    if(!sc.w){ sc.w = iw; sc.h = ih; }
     var s = Math.max((W+40)/iw, (H+40)/ih), dw = iw*s, dh = ih*s;
     try{ x.filter = "blur(6px) saturate(1.3) brightness(.92)"; }catch(e){}
     x.drawImage(img, (W-dw)/2, (H-dh)/2, dw, dh);
@@ -293,8 +317,15 @@ function showPhoto(i){
   var list = scenes(); idx = (i + list.length) % list.length; var sc = list[idx];
   makeBlur(sc, function(blur){
     layer = 1 - layer;
+    var tall = sc.w && sc.h && sc.h >= sc.w * 0.95;
     var on = document.getElementById("p"+layer), off = document.getElementById("p"+(1-layer));
-    on.style.backgroundImage = 'url("'+srcOf(sc)+'")'; on.classList.add("on"); off.classList.remove("on");
+    on.style.backgroundImage = 'url("'+(tall ? blur : srcOf(sc))+'")'; on.classList.add("on"); off.classList.remove("on");
+    var card = document.getElementById("card"), cv = card.children;
+    if(tall){
+      card.style.width = Math.min(46, 46 * sc.w / sc.h) + "rem";
+      cv[layer].style.backgroundImage = 'url("'+srcOf(sc)+'")'; cv[layer].classList.add("on"); cv[1-layer].classList.remove("on");
+    }
+    document.body.classList.toggle("portrait", !!tall);
     document.querySelectorAll(".frost").forEach(function(f){
       var b = f.children; b[layer].style.backgroundImage = 'url("'+blur+'")'; b[layer].classList.add("on"); b[1-layer].classList.remove("on");
     });
@@ -387,17 +418,28 @@ var ROWS = [
   {act:"system", label:"Sistem ayarları"}
 ];
 /* Cihazda dosya seçici yok: fotoğraf satırı yerine Home tuşu ayarı gösterilir */
-if(NATIVE){ ROWS = ROWS.filter(function(r){ return r.act !== "photos"; });
+if(NATIVE){ ROWS = ROWS.map(function(r){ return r.act === "photos" ? {act:"reload", label:"Fotoğrafları yenile"} : r; });
   ROWS.splice(ROWS.length - 1, 0, {act:"home", label:"Home tuşuyla aç"}); }
 function sel(){ return ROWS.map(function(r,i){ return r.grp ? -1 : i; }).filter(function(i){ return i > -1; }); }
 function optT(r){ for(var i=0;i<r.opts.length;i++) if(r.opts[i][0] === S[r.key]) return r.opts[i][1]; return r.opts[0][1]; }
+var rowShift = 0;
 function renderRows(){
   var f = sel()[focus.set];
   document.getElementById("rows").innerHTML = ROWS.map(function(r, i){
     if(r.grp) return '<div class="grp">'+r.grp+'</div>';
-    var v = r.opts ? '<span class="ar">‹</span>'+optT(r)+'<span class="ar">›</span>' : (r.act === "photos" && userPhotos.length ? userPhotos.length+" fotoğraf" : "");
+    var v = r.opts ? '<span class="ar">‹</span>'+optT(r)+'<span class="ar">›</span>' : (r.act === "photos" && userPhotos.length ? userPhotos.length+" fotoğraf" : (r.act === "reload" ? (BUNDLED.length ? BUNDLED.length+" fotoğraf" : "Fotoğraf yok") : ""));
     return '<div class="row'+(i===f?' focus':'')+'" data-s="'+i+'"><span>'+r.label+'</span><span class="v">'+v+'</span></div>';
   }).join("");
+  /* Uzun listede odaklanan satırı görünür tut */
+  var wrap = document.getElementById("rowsWrap"), rows = document.getElementById("rows"), fr = rows.querySelector(".row.focus");
+  if(fr){
+    var u = stage.getBoundingClientRect().width / 120, wh = wrap.clientHeight / u, top = fr.offsetTop / u, h = fr.offsetHeight / u;
+    var total = rows.scrollHeight / u, cur = rowShift;
+    if(top - cur < 3) cur = Math.max(0, top - 3);
+    if(top + h - cur > wh - 2) cur = top + h - wh + 2;
+    rowShift = Math.max(0, Math.min(cur, Math.max(0, total - wh + 1)));
+    rows.style.transform = "translateY(" + (-rowShift) + "rem)";
+  }
 }
 
 /* ---------- Odak ve kumanda ---------- */
@@ -444,9 +486,9 @@ function key(k){
     }
     if(k === "ok"){ var a = dockItems()[focus.dock];
       if(a.pkg === "#all"){ focus.all = 0; return setMode("all"); }
-      if(a.pkg === "#set"){ focus.set = 0; return setMode("set"); }
+      if(a.pkg === "#set"){ focus.set = 0; rowShift = 0; return setMode("set"); }
       return launch(a); }
-    if(k === "menu"){ focus.set = 0; return setMode("set"); }
+    if(k === "menu"){ focus.set = 0; rowShift = 0; return setMode("set"); }
     if(k === "back") return goIdle();
     return;
   }
@@ -472,6 +514,7 @@ function key(k){
       if(r.act === "photos") document.getElementById("files").click();
       else if(r.act === "pick"){ picking = true; focus.all = 0; return setMode("all"); }
       else if(r.act === "edit"){ focus.dock = 0; picked = false; return setMode("edit"); }
+      else if(r.act === "reload"){ location.reload(); return; }
       else if(r.act === "home"){ try{ NATIVE.openAccessibilitySettings(); }catch(e){} }
       else if(r.act === "system"){ if(NATIVE){ try{ NATIVE.openSystemSettings(); }catch(e){} } else toast("Sistem ayarları açılıyor"); }
     }

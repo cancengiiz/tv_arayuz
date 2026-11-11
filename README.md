@@ -48,6 +48,15 @@ adb shell pm enable com.google.android.apps.tv.launcherx
 
 Bu yöntemle kumandadaki bazı kısayol tuşları (YouTube, Netflix gibi) çalışmayabilir. Önce A'yı dene.
 
+## Arka plan fotoğrafları
+
+Fotoğraflar GitHub'a konmaz, projektörde durur. Seans ilk açılışta fotoğraflara erişim izni ister.
+
+- Projektörde **Seans** adlı bir klasör varsa yalnızca oradaki fotoğraflar kullanılır, yoksa projektördeki tüm fotoğraflar.
+- Fotoğrafları aktarmanın en kolay yolu: telefona ve projektöre **Send Files to TV** uygulamasını kurup fotoğrafları telefondan göndermek.
+- Yeni fotoğraf eklediğinde Seans'a dönmen yeterli, liste kendiliğinden yenilenir. Ayarlardaki "Fotoğrafları yenile" de aynı işi yapar.
+- Dikey ve kare fotoğraflar sağda çerçeveli gösterilir, yatay fotoğraflar tam ekran.
+
 ## Kumanda
 
 | Tuş | İşlev |

@@ -10,8 +10,8 @@ android {
         applicationId 'tv.seans.launcher'
         minSdk 24
         targetSdk 34
-        versionCode 3
-        versionName '0.2.1'
+        versionCode 4
+        versionName '0.3.0'
     }
 
     // Sabit imza (isteğe bağlı): GitHub secrets'ta SEANS_KEYSTORE_B64 ve SEANS_KEY_PASSWORD varsa

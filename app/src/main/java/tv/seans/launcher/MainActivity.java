@@ -6,11 +6,14 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.KeyEvent;
 import android.view.View;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -24,6 +27,8 @@ public class MainActivity extends Activity {
 
     private WebView web;
     private boolean appsChanged = false;
+    private LocalContent content;
+    private int lastPhotoCount = -1;
 
     private final BroadcastReceiver packageReceiver = new BroadcastReceiver() {
         @Override
@@ -51,15 +56,26 @@ public class MainActivity extends Activity {
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setCacheMode(WebSettings.LOAD_NO_CACHE);
 
-        web.setWebViewClient(new WebViewClient());
+        content = new LocalContent(this);
+        web.setWebViewClient(new WebViewClient() {
+            @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                return content.handle(request.getUrl());
+            }
+        });
         web.addJavascriptInterface(new Bridge(this), "SeansNative");
         web.setFocusable(true);
         web.setFocusableInTouchMode(true);
 
         setContentView(web);
         hideSystemBars();
-        web.loadUrl("file:///android_asset/index.html");
+        web.loadUrl(LocalContent.START_URL);
         web.requestFocus();
+
+        // Fotoğraflar projektörde: ilk açılışta okuma izni istenir
+        if (!content.hasPermission()) {
+            requestPermissions(new String[]{LocalContent.photoPermission()}, 1);
+        }
 
         IntentFilter f = new IntentFilter();
         f.addAction(Intent.ACTION_PACKAGE_ADDED);
@@ -86,11 +102,24 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         hideSystemBars();
-        if (appsChanged) {
+        // Yeni uygulama kurulduysa ya da projektöre yeni fotoğraf eklendiyse sayfayı yenile
+        int photos = content.photoCount();
+        boolean photosChanged = lastPhotoCount >= 0 && photos != lastPhotoCount;
+        lastPhotoCount = photos;
+        if (appsChanged || photosChanged) {
             appsChanged = false;
             web.reload();
         }
         web.requestFocus();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
+        super.onRequestPermissionsResult(requestCode, permissions, results);
+        if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) {
+            lastPhotoCount = content.photoCount();
+            web.reload();
+        }
     }
 
     /** Uygulama zaten açıkken Home tuşuna basılırsa: alt şeride dön. */
