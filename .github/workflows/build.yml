@@ -23,7 +23,15 @@ jobs:
         with:
           gradle-version: "8.7"
 
+      - name: İmza anahtarını hazırla (secrets tanımlıysa)
+        env:
+          KS: ${{ secrets.SEANS_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KS" ]; then echo "$KS" | base64 -d > app/seans.keystore; echo "Sabit imza kullanılıyor"; else echo "Secrets yok: geçici imza kullanılacak"; fi
+
       - name: APK oluştur
+        env:
+          SEANS_KEY_PASSWORD: ${{ secrets.SEANS_KEY_PASSWORD }}
         run: gradle assembleDebug --no-daemon --stacktrace
 
       - name: APK'yı yükle (Actions sekmesinde indirilebilir)

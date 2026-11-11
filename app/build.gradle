@@ -10,8 +10,26 @@ android {
         applicationId 'tv.seans.launcher'
         minSdk 24
         targetSdk 34
-        versionCode 2
-        versionName '0.2.0'
+        versionCode 3
+        versionName '0.2.1'
+    }
+
+    // Sabit imza (isteğe bağlı): GitHub secrets'ta SEANS_KEYSTORE_B64 ve SEANS_KEY_PASSWORD varsa
+    // her derleme aynı anahtarla imzalanır ve güncellemeler eski sürümün üzerine kurulur.
+    def ks = file('seans.keystore')
+    def ksPass = System.getenv('SEANS_KEY_PASSWORD')
+    if (ks.exists() && ksPass) {
+        signingConfigs {
+            seans {
+                storeFile ks
+                storePassword ksPass
+                keyAlias 'seans'
+                keyPassword ksPass
+            }
+        }
+        buildTypes {
+            debug { signingConfig signingConfigs.seans }
+        }
     }
 
     buildTypes {
